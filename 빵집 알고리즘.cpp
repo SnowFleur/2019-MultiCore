@@ -27,9 +27,6 @@ public:
 	~Bakery();
 };
 
-Bakery g_bakery;
-
-
 void Bakery::InitFlag(const int number) {
 	if (m_flag == nullptr) {
 		m_flag = new bool[number];
@@ -97,6 +94,7 @@ Bakery::~Bakery() {
 		std::cout << "Error:~Bakery() flag is nullptr" << std::endl;
 }
 
+Bakery g_bakery;
 
 void AddFunc(int num_threads, int myid) {
 	for (int i = 0; i < MAX_NUMBER / num_threads; ++i) {
