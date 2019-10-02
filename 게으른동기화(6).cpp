@@ -14,7 +14,7 @@ public:
 	int key;
 	NODE* next;
 	std::mutex n_lock;
-	bool marked= false;
+	bool marked = false;
 	NODE() { next = NULL; }
 	NODE(int key_value) {
 		next = NULL;
@@ -52,69 +52,76 @@ public:
 	}
 	bool Add(int key) {
 		NODE* pred, *curr;
-		pred = &head;
-		curr = pred->next;
 
-		while (curr->key < key) {
-			pred = curr;
-			curr = curr->next;
+		while (true) {
+			pred = &head;
+			curr = pred->next;
 
-		}
-		pred->Lock();
-		curr->Lock();
+			while (curr->key < key) {
+				pred = curr;
+				curr = curr->next;
 
-		if (Validate(pred, curr)) {
-			if (key == curr->key) {
-				curr->UnLock();
-				pred->UnLock();
-				return false;
 			}
-			else {
-				NODE* node = new NODE(key);
+			pred->Lock();
+			curr->Lock();
+
+			if (Validate(pred, curr)) {
+				if (key == curr->key) {
+					curr->UnLock();
+					pred->UnLock();
+					return false;
+				}
+				else {
+					NODE* node = new NODE(key);
 					node->next = curr;
 					pred->next = node;
 					curr->UnLock();
 					pred->UnLock();
 					return true;
+				}
 			}
-		}
-		else {
-			curr->UnLock();
-			pred->UnLock();
+			else {
+				curr->UnLock();
+				pred->UnLock();
+				continue;
+			}
 		}
 
 	}
 
 	bool Remove(int key) {
 		NODE* pred, *curr;
-		pred = &head;
-		curr = pred->next;
+		while (true) {
+			pred = &head;
+			curr = pred->next;
 
-		while (curr->key < key) {
-			pred = curr;
-			curr = curr->next;
-		}
-		pred->Lock();
-		curr->Lock();
+			while (curr->key < key) {
+				pred = curr;
+				curr = curr->next;
+			}
+			pred->Lock();
+			curr->Lock();
 
-		if (Validate(pred, curr)) {
+			if (Validate(pred, curr)) {
 
-			if (curr->key != key) {
-				curr->UnLock();
-				pred->UnLock();
-				return false;
+				if (curr->key != key) {
+					curr->UnLock();
+					pred->UnLock();
+					return false;
+				}
+				else {
+					curr->marked = true;
+					pred->next = curr->next;
+					curr->UnLock();
+					pred->UnLock();
+					return true;
+				}
 			}
 			else {
-				curr->marked = true;
-				pred->next = curr->next;
 				curr->UnLock();
 				pred->UnLock();
-				return true;
+				continue;
 			}
-		}
-		else {
-			curr->UnLock();
-			pred->UnLock();
 		}
 	}
 

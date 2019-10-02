@@ -15,7 +15,7 @@ public:
 	int key;
 	std::shared_ptr<SPNODE>next;
 	std::mutex n_lock;
-	bool marked=false;
+	bool marked = false;
 	SPNODE() { next = NULL; }
 	SPNODE(int key_value) {
 		next = NULL;
@@ -46,70 +46,76 @@ public:
 	}
 	bool Add(int key) {
 		std::shared_ptr<SPNODE> pred, curr;
-		pred = head;
-		curr = pred->next;
+		while (true) {
+			pred = head;
+			curr = pred->next;
 
-		while (curr->key < key) {
-			pred = curr;
-			curr = curr->next;
+			while (curr->key < key) {
+				pred = curr;
+				curr = curr->next;
 
-		}
-		pred->Lock();
-		curr->Lock();
+			}
+			pred->Lock();
+			curr->Lock();
 
-		if (Validate(pred, curr)) {
-			if (key == curr->key) {
-				curr->UnLock();
-				pred->UnLock();
-				return false;
+			if (Validate(pred, curr)) {
+				if (key == curr->key) {
+					curr->UnLock();
+					pred->UnLock();
+					return false;
+				}
+				else {
+					std::shared_ptr<SPNODE> node;
+					node = std::make_shared<SPNODE>(key);
+					node->next = curr;
+					pred->next = node;
+					curr->UnLock();
+					pred->UnLock();
+					return true;
+				}
 			}
 			else {
-				std::shared_ptr<SPNODE> node;
-				node = std::make_shared<SPNODE>(key);
-				node->next = curr;
-				pred->next = node;
 				curr->UnLock();
 				pred->UnLock();
-				return true;
+				continue;
 			}
-		}
-		else {
-			curr->UnLock();
-			pred->UnLock();
 		}
 
 	}
 
 	bool Remove(int key) {
 		std::shared_ptr<SPNODE> pred, curr;
-		pred = head;
-		curr = pred->next;
+		while (true) {
+			pred = head;
+			curr = pred->next;
 
-		while (curr->key < key) {
-			pred = curr;
-			curr = curr->next;
-		}
-		pred->Lock();
-		curr->Lock();
+			while (curr->key < key) {
+				pred = curr;
+				curr = curr->next;
+			}
+			pred->Lock();
+			curr->Lock();
 
-		if (Validate(pred, curr)) {
+			if (Validate(pred, curr)) {
 
-			if (curr->key != key) {
-				curr->UnLock();
-				pred->UnLock();
-				return false;
+				if (curr->key != key) {
+					curr->UnLock();
+					pred->UnLock();
+					return false;
+				}
+				else {
+					curr->marked = true;
+					pred->next = curr->next;
+					curr->UnLock();
+					pred->UnLock();
+					return true;
+				}
 			}
 			else {
-				curr->marked = true;
-				pred->next = curr->next;
 				curr->UnLock();
 				pred->UnLock();
-				return true;
+				continue;
 			}
-		}
-		else {
-			curr->UnLock();
-			pred->UnLock();
 		}
 	}
 

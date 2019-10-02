@@ -1,3 +1,6 @@
+#define ADD 0
+#define REMOVE 1
+#define CONTAINS 2
 #include<iostream>
 #include<thread>
 #include<mutex>
@@ -34,7 +37,7 @@ public:
 		NODE* node = &head;
 
 		while (node->key <= pred->key) {
-		
+
 			if (node == pred) {
 				return pred->next == curr;
 			}
@@ -54,71 +57,76 @@ public:
 	}
 	bool Add(int key) {
 		NODE* pred, *curr;
-		pred = &head;
-		curr = pred->next;
+		while (true) {
+			pred = &head;
+			curr = pred->next;
 
-		while (curr->key < key) {
-			pred = curr;
-			curr = curr->next;
+			while (curr->key < key) {
+				pred = curr;
+				curr = curr->next;
 
-		}
-		pred->Lock();
-		curr->Lock();
-
-		if (Validate(pred, curr)) {
-			if (key == curr->key) {
-				curr->UnLock();
-				pred->UnLock();
-				return false;
 			}
-			else {
-				NODE* node = new NODE(key);
+			pred->Lock();
+			curr->Lock();
+
+			if (Validate(pred, curr)) {
+				if (key == curr->key) {
+					curr->UnLock();
+					pred->UnLock();
+					return false;
+				}
+				else {
+					NODE* node = new NODE(key);
 					node->next = curr;
 					pred->next = node;
 					curr->UnLock();
 					pred->UnLock();
 					return true;
+				}
 			}
-		}
-		else {
-			curr->UnLock();
-			pred->UnLock();
+			else {
+				curr->UnLock();
+				pred->UnLock();
+				continue;
+			}
 		}
 
 	}
 
 	bool Remove(int key) {
 		NODE* pred, *curr;
-		pred = &head;
-		curr = pred->next;
-
-		while (curr->key < key) {
-			pred = curr;
-			curr = curr->next;
-		}
-		pred->Lock();
-		curr->Lock();
-
-		if (Validate(pred, curr)) {
-
-			if (key == curr->key) {
-				pred->next = curr->next;
-				curr->UnLock();
-				pred->UnLock();
-				return true;
+		while (true) {
+			pred = &head;
+			curr = pred->next;
+			while (curr->key < key) {
+				pred = curr;
+				curr = curr->next;
 			}
+			pred->Lock();
+			curr->Lock();
 
+			if (Validate(pred, curr)) {
+
+				if (key == curr->key) {
+					pred->next = curr->next;
+					curr->UnLock();
+					pred->UnLock();
+					return true;
+				}
+
+				else {
+					curr->UnLock();
+					pred->UnLock();
+					return false;
+				}
+			}
 			else {
 				curr->UnLock();
 				pred->UnLock();
-				return false;
+				continue;
+
 			}
 		}
-		else {
-			curr->UnLock();
-			pred->UnLock();
-		}
-
 	}
 
 	bool Contains(int key) {
@@ -173,17 +181,17 @@ void ThreadFunc(int num_thread) {
 	int key;
 	for (int i = 0; i < NUM_TEXT / num_thread; ++i) {
 		switch (rand() % 3) {
-		case 0: {
+		case ADD: {
 			key = rand() % KEY_RANGE;
 			clist.Add(key);
 			break;
 		}
-		case 1: {
+		case REMOVE: {
 			key = rand() % KEY_RANGE;
 			clist.Remove(key);
 			break;
 		}
-		case 2: {
+		case CONTAINS: {
 			key = rand() % KEY_RANGE;
 			clist.Contains(key);
 			break;
