@@ -27,11 +27,16 @@ public:
 
 class OList {
 	NODE head, tail;
+	NODE* freeList;
+	NODE freetail;
+	std::mutex fl_l;
 public:
 	OList() {
 		head.key = 0x80000000;
 		tail.key = 0x7FFFFFFF;
 		head.next = &tail;
+		freetail.key = 0x7FFFFFFF;
+		freeList= &freetail;
 	}
 	bool Validate(NODE* pred, NODE* curr) {
 		NODE* node = &head;
@@ -54,6 +59,15 @@ public:
 			head.next = head.next->next;
 			delete ptr;
 		}
+	}
+	void Recycle_freeList(){
+		auto p = freeList;
+		while (p != &freetail) {
+			NODE* n = p->next;
+			delete p;
+			p = n;
+		}
+		freeList = &freetail;
 	}
 	bool Add(int key) {
 		NODE* pred, *curr;
@@ -109,6 +123,10 @@ public:
 
 				if (key == curr->key) {
 					pred->next = curr->next;
+					curr->next = freeList;
+					fl_l.lock();
+					freeList = curr;
+					fl_l.unlock();
 					curr->UnLock();
 					pred->UnLock();
 					return true;
@@ -221,6 +239,7 @@ int main() {
 		int exec_ms = std::chrono::duration_cast<std::chrono::milliseconds>(exec_time).count();
 		std::cout << "Threads[" << num_thread << "]" << " Exec_time" << exec_ms << "ms" << std::endl;
 		clist.display20();
+		clist.Recycle_freeList();
 	}
 	system("pause");
 }
