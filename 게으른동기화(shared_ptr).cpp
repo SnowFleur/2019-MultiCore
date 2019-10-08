@@ -6,9 +6,8 @@
 #include<memory.h>
 
 using namespace std::chrono;
-const auto NUM_TEXT = 4000000;
+const auto NUM_TEXT = 40000;
 const auto KEY_RANGE = 1000;
-
 
 class SPNODE {
 public:
@@ -16,15 +15,12 @@ public:
 	std::shared_ptr<SPNODE>next;
 	std::mutex n_lock;
 	bool marked = false;
-	SPNODE() { next = NULL; }
-	SPNODE(int key_value) {
-		next = NULL;
-		key = key_value;
-	}
+	SPNODE() { next = nullptr; }
+	SPNODE(int key_value) {next = nullptr;key = key_value;}
+	~SPNODE() {}
 	void Lock() { n_lock.lock(); };
 	void UnLock() { n_lock.unlock(); };
 };
-
 
 
 class spzList {
@@ -36,14 +32,20 @@ public:
 		tail = std::make_shared<SPNODE>(0x7FFFFFFF);
 		head->next = tail;
 	}
+	~spzList() {
+		head = nullptr;
+		tail = nullptr;
+	}
+
 	bool Validate(std::shared_ptr<SPNODE> pred, std::shared_ptr<SPNODE> curr) {
 		return !pred->marked && !curr->marked && pred->next == curr;
 	}
-
+	
 	void Init() {
 		/*싱글스레드 작동*/
 		head->next = tail;
 	}
+
 	bool Add(int key) {
 		std::shared_ptr<SPNODE> pred, curr;
 		while (true) {
