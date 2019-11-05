@@ -7,7 +7,7 @@
 #include<atomic>
 
 using namespace std::chrono;
-const auto NUM_TEXT = 10000000;
+const auto NUM_MAX = 10000000;
 const auto KEY_RANGE = 1000;
 
 
@@ -30,11 +30,12 @@ public:
 
 	Cqueue() {head = tail = new NODE(0);}
 
-	bool CAS(NODE* tail, NODE* last, NODE* next) {
-
+	bool CAS(NODE* volatile* addr, NODE* old_v, NODE* new_v){
+		return atomic_compare_exchange_strong(reinterpret_cast<volatile std::atomic_int*>(addr), reinterpret_cast<int*>(&old_v), reinterpret_cast<int>(new_v));
 	}
 	bool CAS(int old_v, int new_v) {
 		return std::atomic_compare_exchange_strong(reinterpret_cast<std::atomic_int*>(this), &old_v, new_v);
+		
 	}
 
 
@@ -55,16 +56,16 @@ public:
 		while (true) {
 			NODE* last = tail;
 			NODE* next = last->next;
-			if (last != tail)continue;
-			if (next == nullptr) {
-					if (CAS(&(last->next), nullptr, e)) {
-						CAS(&tail, last, e);
-						return;
-					}
-					else
-						CAS(&tail, last, next);
+			if (last != tail) continue;
+			if (nullptr == next) {
+				if (CAS(&(last->next), nullptr, e)) {
+					CAS(&tail, last, e);
+					return;
+				}
 			}
+			else CAS(&tail, last, next);
 		}
+
 	}
 
 	int Deq() {
@@ -72,17 +73,19 @@ public:
 			NODE* first = head;
 			NODE* last = tail;
 			NODE* next = first->next;
-			if (first != head)continue;
+
+			if (first != head) continue;
 			if (first == last) {
-				if (next == nullptr)return -1;
+				if (nullptr == next) return -1;
 				CAS(&tail, last, next);
 				continue;
 			}
-			int value = next->key;
-			if (CAS(&head, first, next) == false)continue;
-			delete first;
+			int value{ next->key };
+			if (false == CAS(&head, first, next)) continue;
+
 			return value;
 		}
+
 	}
 
 	void display20() {
@@ -104,8 +107,8 @@ Cqueue my_queue;
 void ThreadFunc(int num_thread) {
 	int key;
 
-	for (int i = 0; i < NUM_TEXT / num_thread; ++i) {
-		if ((rand() % 2 == 0) || i < 10000 / num_thread) {
+	for (int i = 0; i < NUM_MAX / num_thread; ++i) {
+		if ((rand() % 2 == 0) || i < 1000 / num_thread) {
 			my_queue.Enq(i);
 		}
 		else {

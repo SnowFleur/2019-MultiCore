@@ -44,8 +44,8 @@ public:
 
 	void Enq(int key) {
 		NODE* e=nullptr;
-		glock.lock();
 		e = new NODE(key);
+		glock.lock();
 		tail->next = e;
 		tail = e;
 		glock.unlock();
