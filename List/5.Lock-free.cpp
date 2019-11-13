@@ -21,7 +21,6 @@ private:
 public:
 	void set(LFNODE* node, bool removed) {
 		value = reinterpret_cast<int>(node);
-		this->removed = removed;
 		if (value == true) {
 			value = value | 0x01;
 		}
@@ -51,7 +50,10 @@ public:
 		if (new_mark)newvalue = newvalue | 0x01;
 		else newvalue = newvalue & 0xFFFFFFFE;
 
-		return CAS(oldvalue, newvalue);
+		//return CAS(oldvalue, newvalue);
+		return std::atomic_compare_exchange_strong(
+			reinterpret_cast<std::atomic_int*>(&value), &oldvalue, newvalue);
+
 	}
 
 	bool CAS(int old_v, int new_v) {
@@ -63,7 +65,12 @@ public:
 		int newvalue = oldvalue;
 		if (newMark)newvalue = newvalue | 0x01;
 		else newvalue = newvalue & 0xFFFFFFFE;
-		return CAS(oldvalue, newvalue);
+		
+		//return CAS(oldvalue, newvalue);
+
+		return std::atomic_compare_exchange_strong(
+			reinterpret_cast<std::atomic_int*>(&value), &oldvalue, newvalue);
+
 	}
 	void AtomicMarkableReference(LFNODE* node, bool newmark) {}
 
@@ -158,15 +165,12 @@ public:
 			if (curr->key == key) { return false; }
 
 			else {
-				//retry:
 				LFNODE* node = new LFNODE(key);
 				auto error = GetLastError();
-				//node->next.getptr()->AtomicMarkableReference(curr, false);
 				node->next.set(curr, false);
 
 				if (pred->next.CAS(curr, node, false, false)) { return true; }
 				delete node;
-				//goto retry; //goto »ç¿ë
 			}
 		}
 	}
@@ -189,10 +193,9 @@ public:
 
 	bool Contains(int key) {
 		LFNODE* curr = &head;
-		bool marked = false;
-
+		bool marked;
 		while (curr->key < key) {
-			curr = curr->next.getptr();
+			curr = curr->next.getptr(&marked);
 			//LFNODE succ = curr->next.getptr(marked);
 		}
 		return curr->key == key && !marked;

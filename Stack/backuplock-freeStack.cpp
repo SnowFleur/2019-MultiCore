@@ -33,15 +33,35 @@ public:
 		ptr = p;
 	}
 };
+class BACKOFF {
+private:
+	int limit;
+	const int MINDELAY=800;
+	const int MAXDELAY=4000;
+public:
+	BACKOFF() {
+		limit = MINDELAY;
+	}
+	void do_backoff() {
+		int delay = rand() % limit;
+		if (delay == 0)return;
+		limit = limit + limit;
+		if (limit > MAXDELAY)limit = MAXDELAY;
+		_asm mov ecx, delay;
+	myloop:
+		_asm loop myloop;
 
-class LFSTACK {
+	}
+};
+
+class LFBSTACK {
 private:
 	SPTR top;
 public:
-	LFSTACK() {
+	LFBSTACK() {
 		top.ptr = new NODE(0);
 	}
-	~LFSTACK() { Init(); }
+	~LFBSTACK() { Init(); }
 
 	void Init() {
 		NODE *ptr;
@@ -70,6 +90,7 @@ public:
 	}
 
 	void Push(int key) {
+		BACKOFF bo;
 		NODE *e = new NODE(key);
 		while (true) {
 			SPTR last = top;
@@ -77,15 +98,17 @@ public:
 			if (CAS(&top.ptr, last.ptr, e)) {
 				return; //break
 			}
-			else
+			else {
+				bo.do_backoff();
 				continue;
+			}
 		}
 	}
 
 	int Pop() {
 		while (true) {
 			SPTR last = top;
-
+			BACKOFF bo;
 			/* 아무것도 없을 경우가 있다.
 			top으로 하면 의미가 없다... 읽고 내려간 사이에 다른 스레드가 바꿀 수 있음
 			*/
@@ -97,8 +120,11 @@ public:
 			if (CAS(&top.ptr, last.ptr, last.ptr->next)) {
 				return value;
 			}
-			else
+			else {
+				bo.do_backoff();
 				continue;
+			}
+			
 		}
 	}
 	void display20()
@@ -115,7 +141,7 @@ public:
 	}
 
 };
-LFSTACK my_stack;
+LFBSTACK my_stack;
 
 void ThreadFunc(int num_thread) {
 	for (int i = 1; i < NUM_TEST / num_thread; i++) {
@@ -123,7 +149,7 @@ void ThreadFunc(int num_thread) {
 			my_stack.Push(i);
 		}
 		else {
-			my_stack.Pop();
+		   my_stack.Pop();
 		}
 	}
 }
